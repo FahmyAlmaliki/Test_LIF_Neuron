@@ -1,0 +1,9 @@
+{
+    "total_samples": 600,
+    "train_samples": 480,
+    "test_samples": 120,
+    "time_steps": 64,
+    "num_inputs": 30,
+    "normal_count": 300,
+    "arrhythmia_count": 300
+}
