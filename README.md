@@ -32,27 +32,27 @@ Arsitektur hardware digital murni (*all-digital*) untuk 1 neuron LIF ini diranca
 2. **Akumulator / Pohon Penjumlah (*Adder Tree*)**:
    * Menjumlahkan seluruh luaran sinaps aktif secara sekuensial atau paralel ke dalam akumulator (`acc_reg`).
 3. **Register Potensial Membran (*Membrane Register*)**:
-   * Register biner (misalnya 24-bit atau 32-bit `signed integer`) yang menyimpan nilai potensial membran ($V_{mem}$).
+   * Register biner (misalnya 16-bit atau 24-bit `signed integer`) yang menyimpan nilai potensial membran ($V_{\text{mem}}$).
 4. **Unit Peluruhan (*Leakage Unit*)**:
    * Mengimplementasikan sifat kebocoran eksponensial ($\beta$) menggunakan operasi aritmatika digital **Shift-and-Subtract**:
-     $$\text{V}_{decay} = \text{V}_{mem} - (\text{V}_{mem} \gg \text{DECAY\_SHIFT})$$
+     $$V_{\text{decay}} = V_{\text{mem}} - (V_{\text{mem}} \gg \text{DecayShift})$$
 5. **Komparator Ambang Batas (*Threshold Comparator*)**:
-   * Membandingkan $V_{sum} = V_{decay} + acc\_reg$ dengan nilai ambang batas digital ($V_{th}$).
-   * Jika $V_{sum} \ge V_{th}$, menghasilkan keluaran biner `Spike_Out = 1`.
+   * Membandingkan $V_{\text{sum}} = V_{\text{decay}} + \text{acc}$ (nilai akumulator) dengan nilai ambang batas digital ($V_{\text{th}}$).
+   * Jika $V_{\text{sum}} \ge V_{\text{th}}$, menghasilkan keluaran biner `Spike_Out = 1`.
 6. **Mekanisme Reset (*Soft Reset / Hard Reset*)**:
-   * Saat `Spike_Out = 1`, potensial membran di-reset menggunakan metode *soft reset* ($\text{V}_{new} = \text{V}_{sum} - \text{V}_{th}$) atau *hard reset* ($\text{V}_{new} = 0$).
+   * Saat `Spike_Out = 1`, potensial membran di-reset menggunakan metode *soft reset* ($V_{\text{new}} = V_{\text{sum}} - V_{\text{th}}$) atau *hard reset* ($V_{\text{new}} = 0$).
 
 ---
 
 ## 2. Persamaan Logika Hardware Digital
 
-$$\text{V}_{decay}[n] = \text{V}_{mem}[n] - (\text{V}_{mem}[n] \gg \text{DECAY\_SHIFT})$$
+$$V_{\text{decay}}[n] = V_{\text{mem}}[n] - (V_{\text{mem}}[n] \gg \text{DecayShift})$$
 
-$$\text{V}_{sum}[n] = \text{V}_{decay}[n] + \sum_{i=0}^{N-1} (W_i \cdot \text{Spike\_In}_i[n])$$
+$$V_{\text{sum}}[n] = V_{\text{decay}}[n] + \sum_{i=0}^{N-1} (W_i \cdot \text{SpikeIn}_i[n])$$
 
-$$\text{Spike\_Out}[n] = \begin{cases} 1, & \text{jika } \text{V}_{sum}[n] \ge \text{V}_{th} \\ 0, & \text{jika } \text{V}_{sum}[n] < \text{V}_{th} \end{cases}$$
+$$\text{SpikeOut}[n] = \begin{cases} 1, & \text{jika } V_{\text{sum}}[n] \ge V_{\text{th}} \\ 0, & \text{jika } V_{\text{sum}}[n] < V_{\text{th}} \end{cases}$$
 
-$$\text{V}_{mem}[n+1] = \begin{cases} \text{V}_{sum}[n] - \text{V}_{th}, & \text{jika } \text{Spike\_Out}[n] = 1 \text{ (Soft Reset)} \\ \text{V}_{sum}[n], & \text{jika } \text{Spike\_Out}[n] = 0 \end{cases}$$
+$$V_{\text{mem}}[n+1] = \begin{cases} V_{\text{sum}}[n] - V_{\text{th}}, & \text{jika } \text{SpikeOut}[n] = 1 \text{ (Soft Reset)} \\ V_{\text{sum}}[n], & \text{jika } \text{SpikeOut}[n] = 0 \end{cases}$$
 
 ---
 
@@ -101,7 +101,7 @@ $$\text{V}_{mem}[n+1] = \begin{cases} \text{V}_{sum}[n] - \text{V}_{th}, & \text
 
 ### **Fase 2: Ekspor Bobot & Parameter ke Hardware Format**
 1. Skalakan bobot terkuantisasi dari PyTorch ke format integer 8-bit Q4.4:
-   $$\text{Weight}_{fixed} = \text{clamp}(\text{round}(\text{Weight}_{float} \times 16), -128, 127)$$
+   $$W_{\text{fixed}} = \operatorname{clamp}(\operatorname{round}(W_{\text{float}} \times 16), -128, 127)$$
 2. Simpan nilai bobot ke dalam file teks memori Hexadecimal/Binary (misalnya `weight_q44.mem`).
 
 ### **Fase 3: Perancangan RTL Hardware (Verilog)**
@@ -114,9 +114,9 @@ $$\text{V}_{mem}[n+1] = \begin{cases} \text{V}_{sum}[n] - \text{V}_{th}, & \text
    * Deklarasikan sinyal `clk` (100 MHz) dan `rst_n`.
    * Berikan sekuens `spikes_in` biner hasil *rate encoding*.
 2. Amati bentuk gelombang (*waveform*) pada **Vivado Behavioral Simulation**:
-   * Verifikasi kenaikan $V_{mem}$ saat `spikes_in = 1`.
-   * Verifikasi peluruhan eksponensial $V_{mem}$ saat `spikes_in = 0`.
-   * Verifikasi kemunculan `spike_out = 1` saat $V_{mem} \ge V_{th}$ dan pemotongan nilai $V_{mem} = V_{mem} - V_{th}$.
+   * Verifikasi kenaikan $V_{\text{mem}}$ saat `spikes_in = 1`.
+   * Verifikasi peluruhan eksponensial $V_{\text{mem}}$ saat `spikes_in = 0`.
+   * Verifikasi kemunculan `spike_out = 1` saat $V_{\text{mem}} \ge V_{\text{th}}$ dan pemotongan nilai $V_{\text{mem}} = V_{\text{mem}} - V_{\text{th}}$.
 3. **Hardware-Software Equivalence Check**: Bandingkan urutan `spike_out` dari simulasi Vivado dengan luaran tensor PyTorch (*golden model*). Hasil harus **100% ekuivalen**.
 
 ### **Fase 5: Sintesis, Implementasi & Analisis Resource di Vivado**
